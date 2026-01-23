@@ -8,7 +8,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Verificar se está logado
-    const userData = localStorage.getItem('dommus_current_user');
+   const userData = localStorage.getItem('dommus_user');
+
     if (!userData) {
       navigate('/login');
       return;
@@ -17,7 +18,8 @@ export default function Dashboard() {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('dommus_current_user');
+    localStorage.removeItem('dommus_user');
+localStorage.removeItem('dommus_token');
     navigate('/');
   };
 

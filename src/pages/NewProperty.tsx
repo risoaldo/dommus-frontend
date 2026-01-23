@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Home, MapPin, FileText, Image as ImageIcon, X } from 'lucide-react';
+import { propertyApi } from '../services/api';
 
 type FormStep = 1 | 2 | 3 | 4;
 
@@ -28,6 +29,8 @@ export default function NewProperty() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<FormStep>(1);
   const [imagePreview, setImagePreview] = useState<string[]>([]);  
+  const [isLoading, setIsLoading] = useState(false);
+
 
   const [formData, setFormData] = useState<PropertyForm>({
     title: '',
@@ -51,7 +54,7 @@ export default function NewProperty() {
 
   useEffect(() => {
     // Verificar se está logado
-    const userData = localStorage.getItem('dommus_current_user');
+const userData = localStorage.getItem('dommus_user');
     if (!userData) {
       navigate('/login');
     }
@@ -115,7 +118,9 @@ export default function NewProperty() {
 const handleRemoveImage = (index: number) => {
   setImagePreview(prev => prev.filter((_, i) => i !== index));
 };
-const handleSubmit = (e: FormEvent) => {
+
+
+const handleSubmit = async (e: FormEvent) => {
   e.preventDefault();
 
   if (imagePreview.length < 3) {
@@ -124,10 +129,53 @@ const handleSubmit = (e: FormEvent) => {
     return;
   }
 
-  console.log('Imóvel cadastrado:', { ...formData, images: imagePreview });
-  alert('Imóvel cadastrado com sucesso! (dados salvos no console)');
-  navigate('/dashboard');
+  setIsLoading(true);
+
+  try {
+    const typeMap: Record<string, string> = {
+      'casa': 'house',
+      'apartamento': 'apartment',
+      'terreno': 'land',
+      'comercial': 'commercial',
+    };
+
+    const transactionMap: Record<string, string> = {
+      'venda': 'sale',
+      'aluguel': 'rent',
+    };
+
+    const propertyData = {
+      title: formData.title,
+      description: formData.description,
+      type: typeMap[formData.type] || 'house',
+      transaction_type: transactionMap[formData.transactionType] || 'sale',
+      price: parseFloat(formData.price),
+      area: parseFloat(formData.area),
+      bedrooms: parseInt(formData.bedrooms) || 0,
+      bathrooms: parseInt(formData.bathrooms) || 0,
+      parking_spaces: 0,
+      street: formData.address,
+      neighborhood: formData.neighborhood,
+      city: formData.city,
+      state: formData.state,
+      zip_code: '63430-000',
+      features: formData.features,
+      accepts_financing: formData.acceptsMCMV,
+    };
+
+    await propertyApi.create(propertyData);
+    
+    alert('Imóvel cadastrado com sucesso!');
+    navigate('/dashboard');
+  } catch (error: any) {
+    console.error('Erro ao cadastrar:', error);
+    alert(error.message || 'Erro ao cadastrar imóvel');
+  } finally {
+    setIsLoading(false);
+  }
 };
+
+
   const steps = [
     { number: 1, title: 'Tipo e Localização', icon: Home },
     { number: 2, title: 'Detalhes', icon: MapPin },

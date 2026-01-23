@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Phone, Home } from 'lucide-react';
+import { Mail, Lock, User, Phone, Home, Loader2 } from 'lucide-react';
+import { authApi } from '../services/api';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -12,12 +13,13 @@ export default function Register() {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validações
+    // Validações no frontend
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem');
       return;
@@ -28,35 +30,26 @@ export default function Register() {
       return;
     }
 
-    // Verificar se já existe um usuário com esse e-mail
-    const usersData = localStorage.getItem('dommus_users');
-    const users = usersData ? JSON.parse(usersData) : [];
+    setIsLoading(true);
 
-    if (users.some((u: any) => u.email === formData.email)) {
-      setError('Já existe uma conta com este e-mail');
-      return;
+    try {
+      // Chama a API do Laravel
+      await authApi.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        password_confirmation: formData.confirmPassword,
+        phone: formData.phone,
+      });
+
+      // Redirecionar para dashboard após sucesso
+      navigate('/dashboard');
+    } catch (err) {
+      // Exibe erro retornado pela API
+      setError(err instanceof Error ? err.message : 'Erro ao criar conta. Tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
-
-    // Criar novo usuário
-    const newUser = {
-      id: Date.now().toString(),
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      password: formData.password,
-      createdAt: new Date().toISOString()
-    };
-
-    // Salvar no localStorage
-    users.push(newUser);
-    localStorage.setItem('dommus_users', JSON.stringify(users));
-
-    // Login automático
-    const { password, confirmPassword, ...userWithoutPassword } = formData;
-    localStorage.setItem('dommus_current_user', JSON.stringify({ ...userWithoutPassword, id: newUser.id }));
-
-    // Redirecionar para dashboard
-    navigate('/dashboard');
   };
 
   return (
@@ -99,7 +92,8 @@ export default function Register() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="João Silva"
                 />
               </div>
@@ -116,7 +110,8 @@ export default function Register() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -133,7 +128,8 @@ export default function Register() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="(88) 99999-9999"
                 />
               </div>
@@ -151,7 +147,8 @@ export default function Register() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="••••••••"
                 />
               </div>
@@ -169,7 +166,8 @@ export default function Register() {
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="••••••••"
                 />
               </div>
@@ -177,9 +175,17 @@ export default function Register() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-button transition-colors shadow-button"
+              disabled={isLoading}
+              className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-button transition-colors shadow-button disabled:bg-brand-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Criar conta
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Criando conta...
+                </>
+              ) : (
+                'Criar conta'
+              )}
             </button>
           </form>
 

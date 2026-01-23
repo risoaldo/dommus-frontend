@@ -1,35 +1,37 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Home } from 'lucide-react';
+import { Mail, Lock, Home, Loader2 } from 'lucide-react';
+import { authApi } from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    // Buscar usuário no localStorage
-    const usersData = localStorage.getItem('dommus_users');
-    if (!usersData) {
-      setError('Usuário não encontrado');
-      return;
-    }
+    try {
+      // Chama a API do Laravel
+      await authApi.login({
+        email: formData.email,
+        password: formData.password,
+      });
+console.log('Login OK, redirecionando...');
+      // Redirecionar para dashboard após sucesso
+       navigate('/dashboard');
+    
 
-    const users = JSON.parse(usersData);
-    const user = users.find((u: any) => u.email === email && u.password === password);
-
-    if (!user) {
-      setError('E-mail ou senha incorretos');
-      return;
-    }
-
-    // Salvar sessão
-    localStorage.setItem('dommus_current_user', JSON.stringify(user));
-    navigate('/dashboard');
+    } catch (err) {
+    setError(err instanceof Error ? err.message : 'Erro ao fazer login. Tente novamente.');
+    setIsLoading(false);
+  }
   };
 
   return (
@@ -41,7 +43,7 @@ export default function Login() {
             <Home className="w-7 h-7 text-brand-600" />
           </div>
           <span className="text-3xl font-display font-bold text-white">
-            Dommus
+            
           </span>
         </Link>
 
@@ -51,7 +53,7 @@ export default function Login() {
             Bem-vindo de volta
           </h1>
           <p className="text-neutral-600 mb-6">
-            Entre com sua conta para gerenciar seus anúncios
+            Entre na sua conta para gerenciar seus anúncios
           </p>
 
           {error && (
@@ -69,10 +71,11 @@ export default function Login() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -86,27 +89,49 @@ export default function Login() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                 <input
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-input focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-brand-600 border-neutral-300 rounded focus:ring-brand-500"
+                />
+                <span className="ml-2 text-sm text-neutral-600">Lembrar-me</span>
+              </label>
+              <Link to="/esqueci-senha" className="text-sm text-brand-600 hover:text-brand-700">
+                Esqueceu a senha?
+              </Link>
+            </div>
+
             <button
               type="submit"
-              className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-button transition-colors shadow-button"
+              disabled={isLoading}
+              className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-button transition-colors shadow-button disabled:bg-brand-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Entrar
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'Entrar'
+              )}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-neutral-600 text-sm">
               Não tem uma conta?{' '}
-              <Link to="/cadastro" className="text-brand-600 hover:text-brand-700 font-semibold">
+              <Link to="/register" className="text-brand-600 hover:text-brand-700 font-semibold">
                 Cadastre-se
               </Link>
             </p>
