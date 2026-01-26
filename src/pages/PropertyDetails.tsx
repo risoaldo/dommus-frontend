@@ -1,31 +1,126 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { MapPin, Bed, Bath, Maximize2, Check, ArrowLeft, User } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { ImageGallery } from '../components/shared/ImageGallery';
 import { WhatsAppButton } from '../components/shared/WhatsAppButton';
 import { mockProperties, mockAdvertisers } from '../data/mock';
+import { propertyApi } from '../services/api';
 import { formatCurrency } from '../lib/utils';
 
 export default function PropertyDetails() {
   const { id } = useParams();
-  const property = mockProperties.find(p => p.id === id);
-  
-  if (!property) {
+  const [property, setProperty] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    const loadProperty = async () => {
+      if (!id) {
+        setNotFound(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Verifica se é um imóvel da API (começa com "api-")
+      if (id.startsWith('api-')) {
+        try {
+          const apiId = parseInt(id.replace('api-', ''));
+          const data = await propertyApi.get(apiId);
+          
+          // Converte para o formato do mock
+          const typeMap: Record<string, string> = {
+            'house': 'casa',
+            'apartment': 'apartamento',
+            'land': 'terreno',
+            'commercial': 'comercial',
+            'farm': 'fazenda',
+          };
+
+          const transactionMap: Record<string, string> = {
+            'sale': 'venda',
+            'rent': 'aluguel',
+            'both': 'venda',
+          };
+
+          setProperty({
+            id: `api-${data.id}`,
+            title: data.title,
+            type: typeMap[data.type] || data.type,
+            transactionType: transactionMap[data.transaction_type] || data.transaction_type,
+            price: data.price,
+            address: data.street,
+            neighborhood: data.neighborhood,
+            city: data.city,
+            state: data.state,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            area: data.area,
+            description: data.description,
+            features: data.features || [],
+            images: data.images && data.images.length > 0 
+  ? data.images.map((img: any) => `http://localhost:8000${img.url}`) 
+  : ['/placeholder-property.jpg'],
+            acceptsMCMV: data.accepts_financing,
+            advertiserId: String(data.user_id),
+            user: data.user,
+          });
+        } catch (error) {
+          console.error('Erro ao carregar imóvel:', error);
+          setNotFound(true);
+        }
+      } else {
+        // Busca nos dados mockados
+        const mockProperty = mockProperties.find(p => p.id === id);
+        if (mockProperty) {
+          setProperty(mockProperty);
+        } else {
+          setNotFound(true);
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    loadProperty();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-neutral-600">Carregando...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (notFound || !property) {
     return <Navigate to="/imoveis" replace />;
   }
 
-  const advertiser = mockAdvertisers.find(a => a.id === property.advertiserId);
+  // Para imóveis da API, usa os dados do user retornado
+  // Para mockados, busca no mockAdvertisers
+  const advertiser = property.user 
+    ? {
+        id: property.user.id,
+        name: property.user.name,
+        phone: property.user.phone || '88992146929',
+        type: 'corretor',
+      }
+    : mockAdvertisers.find(a => a.id === property.advertiserId);
 
   const whatsappMessage = `Olá! Tenho interesse no imóvel: ${property.title} - ${formatCurrency(property.price)}`;
 
   const getTypeLabel = (type: string) => {
-    const labels = {
+    const labels: Record<string, string> = {
       casa: 'Casa',
       apartamento: 'Apartamento',
       terreno: 'Terreno',
-      comercial: 'Comercial'
+      comercial: 'Comercial',
+      fazenda: 'Fazenda',
     };
-    return labels[type as keyof typeof labels] || type;
+    return labels[type] || type;
   };
 
   return (
@@ -81,7 +176,7 @@ export default function PropertyDetails() {
                 </div>
 
                 <div className="flex items-center gap-6 py-4 border-y border-neutral-200 my-6">
-                  {property.bedrooms && (
+                  {property.bedrooms > 0 && (
                     <div className="flex items-center gap-2">
                       <Bed className="w-5 h-5 text-brand-600" />
                       <div>
@@ -90,7 +185,7 @@ export default function PropertyDetails() {
                       </div>
                     </div>
                   )}
-                  {property.bathrooms && (
+                  {property.bathrooms > 0 && (
                     <div className="flex items-center gap-2">
                       <Bath className="w-5 h-5 text-brand-600" />
                       <div>
@@ -113,11 +208,11 @@ export default function PropertyDetails() {
                   <p className="text-neutral-700 leading-relaxed">{property.description}</p>
                 </div>
 
-                {property.features.length > 0 && (
+                {property.features && property.features.length > 0 && (
                   <div className="mt-6">
                     <h2 className="text-xl font-semibold text-neutral-900 mb-3">Características</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {property.features.map((feature, index) => (
+                      {property.features.map((feature: string, index: number) => (
                         <div key={index} className="flex items-center gap-2">
                           <Check className="w-4 h-4 text-success-600 flex-shrink-0" />
                           <span className="text-neutral-700">{feature}</span>
@@ -153,17 +248,19 @@ export default function PropertyDetails() {
                       </p>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-success-800 mb-2">Documentos Necessários:</p>
-                    <ul className="space-y-1">
-                      {property.mcmvInfo.requiredDocuments.map((doc, index) => (
-                        <li key={index} className="flex items-center gap-2 text-success-700">
-                          <Check className="w-4 h-4 flex-shrink-0" />
-                          {doc}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {property.mcmvInfo.requiredDocuments && (
+                    <div>
+                      <p className="text-sm font-medium text-success-800 mb-2">Documentos Necessários:</p>
+                      <ul className="space-y-1">
+                        {property.mcmvInfo.requiredDocuments.map((doc: string, index: number) => (
+                          <li key={index} className="flex items-center gap-2 text-success-700">
+                            <Check className="w-4 h-4 flex-shrink-0" />
+                            {doc}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -183,28 +280,25 @@ export default function PropertyDetails() {
                 </div>
 
                 {/* Anunciante */}
-                {advertiser && (
-                  <div className="bg-white rounded-card shadow-card p-6">
-                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Anunciante</h3>
-                    <Link 
-                      to={`/anunciante/${advertiser.id}`}
-                      className="block hover:bg-neutral-50 p-4 -m-4 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center">
-                          <User className="w-6 h-6 text-brand-600" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-neutral-900">{advertiser.name}</p>
-                          <p className="text-sm text-neutral-600 capitalize">{advertiser.type}</p>
-                        </div>
-                      </div>
-                      {advertiser.creci && (
-                        <p className="text-sm text-neutral-600">CRECI: {advertiser.creci}</p>
-                      )}
-                    </Link>
-                  </div>
-                )}
+{advertiser && (
+  <div className="bg-white rounded-card shadow-card p-6">
+    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Anunciante</h3>
+    <Link 
+  to={`/corretor/${advertiser.name.replace(/\s+/g, '').replace(/^./, (c: string) => c.toLowerCase())}`}
+      className="block hover:bg-neutral-50 p-4 -m-4 rounded-lg transition-colors"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center">
+          <User className="w-6 h-6 text-brand-600" />
+        </div>
+        <div>
+          <p className="font-semibold text-neutral-900">{advertiser.name}</p>
+          <p className="text-sm text-brand-600">@{advertiser.name.replace(/\s+/g, '').replace(/^./, (c: string) => c.toLowerCase())}</p>
+        </div>
+      </div>
+    </Link>
+  </div>
+)}
               </div>
             </div>
           </div>

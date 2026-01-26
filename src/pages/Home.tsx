@@ -1,23 +1,91 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Building2, Hotel, TrendingUp, CheckCircle } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { PropertyCard } from '../components/cards/PropertyCard';
 import { HostingCard } from '../components/cards/HostingCard';
 import { mockProperties, mockHostings } from '../data/mock';
+import { propertyApi, Property } from '../services/api';
 
 type SearchType = 'imoveis' | 'hospedagem';
 type QuickFilter = 'all' | 'casa' | 'apartamento' | 'terreno' | 'mcmv';
+
+// Função para converter imóvel da API para o formato do mock
+function apiPropertyToMock(property: Property) {
+  const typeMap: Record<string, string> = {
+    'house': 'casa',
+    'apartment': 'apartamento',
+    'land': 'terreno',
+    'commercial': 'comercial',
+    'farm': 'fazenda',
+  };
+
+  const transactionMap: Record<string, string> = {
+    'sale': 'venda',
+    'rent': 'aluguel',
+    'both': 'venda',
+  };
+
+  return {
+    id: `api-${property.id}`,
+    title: property.title,
+    type: typeMap[property.type] || property.type,
+    transactionType: transactionMap[property.transaction_type] || property.transaction_type,
+    price: property.price,
+    address: property.street,
+    neighborhood: property.neighborhood,
+    city: property.city,
+    state: property.state,
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    area: property.area,
+    description: property.description,
+    features: property.features || [],
+    images: property.images && property.images.length > 0 
+  ? property.images.map(img => `http://localhost:8000${img.url}`) 
+  : ['/placeholder-property.jpg'],
+    acceptsMCMV: property.accepts_financing,
+    advertiserId: String(property.user_id),
+    createdAt: property.created_at,
+  };
+}
 
 export default function Home() {
   const [searchType, setSearchType] = useState<SearchType>('imoveis');
   const [searchQuery, setSearchQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [apiProperties, setApiProperties] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Buscar imóveis da API
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const response = await propertyApi.list();
+        console.log('API Response:', response.data); 
+        const converted = response.data.map(apiPropertyToMock);
+              console.log('Converted:', converted); // Debug
+
+        setApiProperties(converted);
+      } catch (error) {
+        console.error('Erro ao carregar imóveis:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
+
+  // Combinar imóveis da API com mockados
+  const allProperties = useMemo(() => {
+    return [...apiProperties, ...mockProperties];
+  }, [apiProperties]);
 
   // Filtrar imóveis com base no filtro rápido
   const filteredProperties = useMemo(() => {
-    let filtered = mockProperties;
+    let filtered = allProperties;
 
     if (quickFilter === 'casa') {
       filtered = filtered.filter(p => p.type === 'casa');
@@ -30,7 +98,7 @@ export default function Home() {
     }
 
     return filtered;
-  }, [quickFilter]);
+  }, [quickFilter, allProperties]);
 
   const displayedProperties = quickFilter === 'all' 
     ? filteredProperties.slice(0, 3)
@@ -188,7 +256,7 @@ export default function Home() {
                'Imóveis MCMV'}
             </h2>
             <p className="text-neutral-600">
-              {filteredProperties.length} {filteredProperties.length === 1 ? 'imóvel encontrado' : 'imóveis encontrados'}
+              {isLoading ? 'Carregando...' : `${filteredProperties.length} ${filteredProperties.length === 1 ? 'imóvel encontrado' : 'imóveis encontrados'}`}
             </p>
           </div>
           <Link
@@ -199,12 +267,20 @@ export default function Home() {
             <TrendingUp className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          {displayedProperties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
-          ))}
-        </div>
-        {filteredProperties.length === 0 && (
+        
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-neutral-600">Carregando imóveis...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            {displayedProperties.map((property) => (
+              <PropertyCard key={property.id} property={property} />
+            ))}
+          </div>
+        )}
+        
+        {!isLoading && filteredProperties.length === 0 && (
           <div className="text-center py-12">
             <p className="text-neutral-600">Nenhum imóvel encontrado nesta categoria</p>
           </div>

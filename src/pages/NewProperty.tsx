@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Home, MapPin, FileText, Image as ImageIcon, X } from 'lucide-react';
-import { propertyApi } from '../services/api';
+import { propertyApi, propertyImageApi } from '../services/api';
 
 type FormStep = 1 | 2 | 3 | 4;
 
@@ -31,7 +31,7 @@ export default function NewProperty() {
   const [imagePreview, setImagePreview] = useState<string[]>([]);  
   const [isLoading, setIsLoading] = useState(false);
 
-
+const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState<PropertyForm>({
     title: '',
     type: 'casa',
@@ -82,7 +82,7 @@ const userData = localStorage.getItem('dommus_user');
   };
 
   
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files;
   if (!files) return;
 
@@ -105,6 +105,10 @@ const userData = localStorage.getItem('dommus_user');
       return;
     }
 
+    // Guarda o arquivo
+    setImageFiles(prev => [...prev, file]);
+
+    // Cria preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(prev => [...prev, reader.result as string]);
@@ -117,13 +121,13 @@ const userData = localStorage.getItem('dommus_user');
 
 const handleRemoveImage = (index: number) => {
   setImagePreview(prev => prev.filter((_, i) => i !== index));
+  setImageFiles(prev => prev.filter((_, i) => i !== index));
 };
-
 
 const handleSubmit = async (e: FormEvent) => {
   e.preventDefault();
 
-  if (imagePreview.length < 3) {
+  if (imageFiles.length < 3) {
     alert('Adicione pelo menos 3 fotos do imóvel');
     setCurrentStep(3);
     return;
@@ -163,7 +167,13 @@ const handleSubmit = async (e: FormEvent) => {
       accepts_financing: formData.acceptsMCMV,
     };
 
-    await propertyApi.create(propertyData);
+    // 1. Criar o imóvel
+    const property = await propertyApi.create(propertyData);
+
+    // 2. Fazer upload das imagens
+    if (imageFiles.length > 0) {
+      await propertyImageApi.upload(property.id, imageFiles);
+    }
     
     alert('Imóvel cadastrado com sucesso!');
     navigate('/dashboard');

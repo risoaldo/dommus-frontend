@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import NewProperty from './pages/NewProperty';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -27,6 +28,8 @@ function App() {
       <Route path="/dashboard/novo-imovel" element={<NewProperty />} />
       <Route path="/sobre" element={<About />} />
       <Route path="/contato" element={<Contact />} />
+
+<Route path="/corretor/:username" element={<ProfilePage />} />
     </Routes>
   );
 }

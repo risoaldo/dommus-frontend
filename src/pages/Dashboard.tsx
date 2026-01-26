@@ -1,27 +1,47 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Home, Building2, Hotel, LogOut, Plus, Eye } from 'lucide-react';
+import { propertyApi, Property } from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar se está logado
-   const userData = localStorage.getItem('dommus_user');
+    const userData = localStorage.getItem('dommus_user');
 
     if (!userData) {
       navigate('/login');
       return;
     }
     setUser(JSON.parse(userData));
+    
+    // Buscar imóveis do usuário
+    loadProperties();
   }, [navigate]);
+
+  const loadProperties = async () => {
+    try {
+      const data = await propertyApi.myProperties();
+      setProperties(data);
+    } catch (error) {
+      console.error('Erro ao carregar imóveis:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('dommus_user');
-localStorage.removeItem('dommus_token');
+    localStorage.removeItem('dommus_token');
     navigate('/');
   };
+
+  // Calcular estatísticas
+  const activeProperties = properties.filter(p => p.status === 'available').length;
+  const totalViews = properties.reduce((sum, p) => sum + (p.views || 0), 0);
 
   if (!user) {
     return null;
@@ -76,7 +96,9 @@ localStorage.removeItem('dommus_token');
               <div className="w-12 h-12 bg-brand-100 rounded-lg flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-brand-600" />
               </div>
-              <span className="text-3xl font-display font-bold text-neutral-900">0</span>
+              <span className="text-3xl font-display font-bold text-neutral-900">
+                {isLoading ? '...' : activeProperties}
+              </span>
             </div>
             <h3 className="text-neutral-600 font-medium">Imóveis Ativos</h3>
           </div>
@@ -96,7 +118,9 @@ localStorage.removeItem('dommus_token');
               <div className="w-12 h-12 bg-neutral-100 rounded-lg flex items-center justify-center">
                 <Eye className="w-6 h-6 text-neutral-600" />
               </div>
-              <span className="text-3xl font-display font-bold text-neutral-900">0</span>
+              <span className="text-3xl font-display font-bold text-neutral-900">
+                {isLoading ? '...' : totalViews}
+              </span>
             </div>
             <h3 className="text-neutral-600 font-medium">Visualizações</h3>
           </div>
@@ -134,20 +158,53 @@ localStorage.removeItem('dommus_token');
         {/* Lista de Anúncios */}
         <div className="bg-white rounded-card shadow-card p-6">
           <h2 className="text-xl font-semibold text-neutral-900 mb-4">Meus Anúncios</h2>
-          <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-            <p className="text-neutral-600 text-lg mb-2">Nenhum anúncio cadastrado</p>
-            <p className="text-neutral-500 text-sm mb-6">
-              Comece cadastrando seu primeiro imóvel ou hospedagem
-            </p>
-            <Link
-              to="/dashboard/novo-imovel"
-              className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-button font-medium transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Criar primeiro anúncio
-            </Link>
-          </div>
+          
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-neutral-600">Carregando...</p>
+            </div>
+          ) : properties.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-600 text-lg mb-2">Nenhum anúncio cadastrado</p>
+              <p className="text-neutral-500 text-sm mb-6">
+                Comece cadastrando seu primeiro imóvel ou hospedagem
+              </p>
+              <Link
+                to="/dashboard/novo-imovel"
+                className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-button font-medium transition-colors inline-flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Criar primeiro anúncio
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {properties.map((property) => (
+                <div key={property.id} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-neutral-900">{property.title}</h3>
+                    <p className="text-sm text-neutral-600">
+                      {property.neighborhood}, {property.city} • R$ {Number(property.price).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                      property.status === 'available' 
+                        ? 'bg-success-100 text-success-700' 
+                        : 'bg-neutral-100 text-neutral-700'
+                    }`}>
+                      {property.status === 'available' ? 'Ativo' : property.status}
+                    </span>
+                    <span className="text-sm text-neutral-500 flex items-center gap-1">
+                      <Eye className="w-4 h-4" />
+                      {property.views || 0}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

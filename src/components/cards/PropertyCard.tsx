@@ -8,6 +8,8 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+    console.log('Card ID:', property.id); // Debug
+
   const getTypeLabel = (type: string) => {
     const labels = {
       casa: 'Casa',
@@ -23,11 +25,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
       <div className="group bg-white rounded-card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
         {/* Imagem */}
         <div className="relative h-48 overflow-hidden bg-neutral-200">
-          <img 
-            src={property.images[0]} 
-            alt={property.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          />
+           <img 
+    src={property.images?.[0] || '/placeholder-property.jpg'} 
+    alt={property.title}
+    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+  />
           
           {/* Badge de tipo */}
           <div className="absolute top-3 left-3">
