@@ -12,6 +12,7 @@ import NewProperty from './pages/NewProperty';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import ProfilePage from './pages/ProfilePage';
+import EditProperty from './pages/EditProperty';
 
 function App() {
   return (
@@ -30,6 +31,8 @@ function App() {
       <Route path="/contato" element={<Contact />} />
 
 <Route path="/corretor/:username" element={<ProfilePage />} />
+<Route path="/dashboard/editar-imovel/:id" element={<EditProperty />} />
+
     </Routes>
   );
 }

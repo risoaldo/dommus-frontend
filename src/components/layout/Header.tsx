@@ -1,7 +1,39 @@
 import { Link } from 'react-router-dom';
-import { Home, Building2, Hotel, User } from 'lucide-react';
+import { Home, Building2, Hotel, User, LayoutDashboard } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function Header() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('dommus_token');
+      const user = localStorage.getItem('dommus_user');
+      
+      if (token && user) {
+        setIsLoggedIn(true);
+        setUserName(JSON.parse(user).name);
+      } else {
+        setIsLoggedIn(false);
+        setUserName('');
+      }
+    };
+
+    checkAuth();
+
+    // Escuta mudanças no localStorage (login/logout em outras abas)
+    window.addEventListener('storage', checkAuth);
+    
+    // Verifica a cada vez que o componente é montado
+    const interval = setInterval(checkAuth, 1000);
+
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-sm">
       <div className="container-app">
@@ -32,13 +64,24 @@ export function Header() {
               <Hotel className="w-4 h-4" />
               Hospedagem
             </Link>
-            <Link 
-              to="/login" 
-              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-button hover:bg-brand-700 transition-colors font-medium shadow-button"
-            >
-              <User className="w-4 h-4" />
-              Entrar
-            </Link>
+            
+            {isLoggedIn ? (
+              <Link 
+                to="/dashboard" 
+                className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-button hover:bg-brand-700 transition-colors font-medium shadow-button"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <Link 
+                to="/login" 
+                className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-button hover:bg-brand-700 transition-colors font-medium shadow-button"
+              >
+                <User className="w-4 h-4" />
+                Entrar
+              </Link>
+            )}
           </nav>
 
           {/* Navegação Mobile */}
@@ -49,9 +92,15 @@ export function Header() {
             <Link to="/hospedagem" className="text-neutral-700 hover:text-brand-600">
               <Hotel className="w-5 h-5" />
             </Link>
-            <Link to="/login" className="text-neutral-700 hover:text-brand-600">
-              <User className="w-5 h-5" />
-            </Link>
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="text-brand-600">
+                <LayoutDashboard className="w-5 h-5" />
+              </Link>
+            ) : (
+              <Link to="/login" className="text-neutral-700 hover:text-brand-600">
+                <User className="w-5 h-5" />
+              </Link>
+            )}
           </nav>
         </div>
       </div>

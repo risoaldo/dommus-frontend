@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Home, Building2, Hotel, LogOut, Plus, Eye } from 'lucide-react';
+import { Home, Building2, Hotel, LogOut, Plus, Eye, Pencil, Trash2 } from 'lucide-react';
 import { propertyApi, Property } from '../services/api';
 
 export default function Dashboard() {
@@ -32,6 +32,20 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   };
+
+  const handleDelete = async (id: number) => {
+  if (!confirm('Tem certeza que deseja excluir este imóvel?')) {
+    return;
+  }
+
+  try {
+    await propertyApi.delete(id);
+    // Recarrega a lista
+    loadProperties();
+  } catch (error: any) {
+    alert(error.message || 'Erro ao excluir imóvel');
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem('dommus_user');
@@ -156,56 +170,76 @@ export default function Dashboard() {
         </div>
 
         {/* Lista de Anúncios */}
-        <div className="bg-white rounded-card shadow-card p-6">
-          <h2 className="text-xl font-semibold text-neutral-900 mb-4">Meus Anúncios</h2>
-          
-          {isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-neutral-600">Carregando...</p>
-            </div>
-          ) : properties.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-              <p className="text-neutral-600 text-lg mb-2">Nenhum anúncio cadastrado</p>
-              <p className="text-neutral-500 text-sm mb-6">
-                Comece cadastrando seu primeiro imóvel ou hospedagem
-              </p>
+        
+{/* Lista de Anúncios */}
+<div className="bg-white rounded-card shadow-card p-6">
+  <h2 className="text-xl font-semibold text-neutral-900 mb-4">Meus Anúncios</h2>
+  
+  {isLoading ? (
+    <div className="text-center py-12">
+      <p className="text-neutral-600">Carregando...</p>
+    </div>
+  ) : properties.length === 0 ? (
+    <div className="text-center py-12">
+      <Building2 className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+      <p className="text-neutral-600 text-lg mb-2">Nenhum anúncio cadastrado</p>
+      <p className="text-neutral-500 text-sm mb-6">
+        Comece cadastrando seu primeiro imóvel ou hospedagem
+      </p>
+      <Link
+        to="/dashboard/novo-imovel"
+        className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-button font-medium transition-colors inline-flex items-center gap-2"
+      >
+        <Plus className="w-5 h-5" />
+        Criar primeiro anúncio
+      </Link>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {properties.map((property) => (
+        <div key={property.id} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50">
+          <div className="flex-1">
+            <h3 className="font-semibold text-neutral-900">{property.title}</h3>
+            <p className="text-sm text-neutral-600">
+              {property.neighborhood}, {property.city} • R$ {Number(property.price).toLocaleString('pt-BR')}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+              property.status === 'available' 
+                ? 'bg-success-100 text-success-700' 
+                : 'bg-neutral-100 text-neutral-700'
+            }`}>
+              {property.status === 'available' ? 'Ativo' : property.status}
+            </span>
+            <span className="text-sm text-neutral-500 flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              {property.views || 0}
+            </span>
+            
+            {/* Botões de Ação */}
+            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-neutral-200">
               <Link
-                to="/dashboard/novo-imovel"
-                className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-button font-medium transition-colors inline-flex items-center gap-2"
+                to={`/dashboard/editar-imovel/${property.id}`}
+                className="p-2 text-neutral-600 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                title="Editar"
               >
-                <Plus className="w-5 h-5" />
-                Criar primeiro anúncio
+                <Pencil className="w-4 h-4" />
               </Link>
+              <button
+                onClick={() => handleDelete(property.id)}
+                className="p-2 text-neutral-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Excluir"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {properties.map((property) => (
-                <div key={property.id} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-neutral-900">{property.title}</h3>
-                    <p className="text-sm text-neutral-600">
-                      {property.neighborhood}, {property.city} • R$ {Number(property.price).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                      property.status === 'available' 
-                        ? 'bg-success-100 text-success-700' 
-                        : 'bg-neutral-100 text-neutral-700'
-                    }`}>
-                      {property.status === 'available' ? 'Ativo' : property.status}
-                    </span>
-                    <span className="text-sm text-neutral-500 flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {property.views || 0}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
+      ))}
+    </div>
+  )}
+</div>
       </div>
     </div>
   );
