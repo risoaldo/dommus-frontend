@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, Building2, Hotel, TrendingUp, CheckCircle } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { PropertyCard } from '../components/cards/PropertyCard';
-import { HostingCard } from '../components/cards/HostingCard';
-import { mockProperties, mockHostings } from '../data/mock';
 import { propertyApi, Property } from '../services/api';
 
 type SearchType = 'imoveis' | 'hospedagem';
@@ -78,9 +76,9 @@ export default function Home() {
     loadProperties();
   }, []);
 
-  // Combinar imóveis da API com mockados
+  // Usar apenas imóveis da API
   const allProperties = useMemo(() => {
-    return [...apiProperties, ...mockProperties];
+    return apiProperties;
   }, [apiProperties]);
 
   // Filtrar imóveis com base no filtro rápido
@@ -103,8 +101,6 @@ export default function Home() {
   const displayedProperties = quickFilter === 'all' 
     ? filteredProperties.slice(0, 3)
     : filteredProperties.slice(0, 6);
-
-  const featuredHostings = mockHostings.slice(0, 3);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,38 +290,7 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* Hospedagens em Destaque */}
-      <section className="bg-neutral-50 py-16">
-        <div className="container-app">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-display font-bold text-neutral-900 mb-2">
-                Hospedagens em Destaque
-              </h2>
-              <p className="text-neutral-600">As melhores opções para sua estadia</p>
-            </div>
-            <Link
-              to="/hospedagem"
-              className="hidden sm:flex items-center gap-2 text-brand-600 hover:text-brand-700 font-medium"
-            >
-              Ver todas
-              <TrendingUp className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            {featuredHostings.map((hosting) => (
-              <HostingCard key={hosting.id} hosting={hosting} />
-            ))}
-          </div>
-          <Link
-            to="/hospedagem"
-            className="sm:hidden flex items-center justify-center gap-2 text-brand-600 hover:text-brand-700 font-medium"
-          >
-            Ver todas as hospedagens
-            <TrendingUp className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
+      {/* TODO: Hospedagens em Destaque - será implementado quando a API de hospedagens estiver pronta */}
     </Layout>
   );
 }

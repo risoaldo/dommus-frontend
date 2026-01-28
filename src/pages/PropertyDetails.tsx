@@ -4,7 +4,6 @@ import { MapPin, Bed, Bath, Maximize2, Check, ArrowLeft, User } from 'lucide-rea
 import { Layout } from '../components/layout/Layout';
 import { ImageGallery } from '../components/shared/ImageGallery';
 import { WhatsAppButton } from '../components/shared/WhatsAppButton';
-import { mockProperties, mockAdvertisers } from '../data/mock';
 import { propertyApi } from '../services/api';
 import { formatCurrency } from '../lib/utils';
 
@@ -22,61 +21,58 @@ export default function PropertyDetails() {
         return;
       }
 
-      // Verifica se é um imóvel da API (começa com "api-")
-      if (id.startsWith('api-')) {
-        try {
-          const apiId = parseInt(id.replace('api-', ''));
-          const data = await propertyApi.get(apiId);
-          
-          // Converte para o formato do mock
-          const typeMap: Record<string, string> = {
-            'house': 'casa',
-            'apartment': 'apartamento',
-            'land': 'terreno',
-            'commercial': 'comercial',
-            'farm': 'fazenda',
-          };
-
-          const transactionMap: Record<string, string> = {
-            'sale': 'venda',
-            'rent': 'aluguel',
-            'both': 'venda',
-          };
-
-          setProperty({
-            id: `api-${data.id}`,
-            title: data.title,
-            type: typeMap[data.type] || data.type,
-            transactionType: transactionMap[data.transaction_type] || data.transaction_type,
-            price: data.price,
-            address: data.street,
-            neighborhood: data.neighborhood,
-            city: data.city,
-            state: data.state,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            area: data.area,
-            description: data.description,
-            features: data.features || [],
-            images: data.images && data.images.length > 0 
-  ? data.images.map((img: any) => `http://localhost:8000${img.url}`) 
-  : ['/placeholder-property.jpg'],
-            acceptsMCMV: data.accepts_financing,
-            advertiserId: String(data.user_id),
-            user: data.user,
-          });
-        } catch (error) {
-          console.error('Erro ao carregar imóvel:', error);
+      try {
+        // Remove o prefixo "api-" se existir
+        const apiId = id.startsWith('api-') ? parseInt(id.replace('api-', '')) : parseInt(id);
+        
+        if (isNaN(apiId)) {
           setNotFound(true);
+          setIsLoading(false);
+          return;
         }
-      } else {
-        // Busca nos dados mockados
-        const mockProperty = mockProperties.find(p => p.id === id);
-        if (mockProperty) {
-          setProperty(mockProperty);
-        } else {
-          setNotFound(true);
-        }
+
+        const data = await propertyApi.get(apiId);
+        
+        // Converte para o formato esperado
+        const typeMap: Record<string, string> = {
+          'house': 'casa',
+          'apartment': 'apartamento',
+          'land': 'terreno',
+          'commercial': 'comercial',
+          'farm': 'fazenda',
+        };
+
+        const transactionMap: Record<string, string> = {
+          'sale': 'venda',
+          'rent': 'aluguel',
+          'both': 'venda',
+        };
+
+        setProperty({
+          id: data.id,
+          title: data.title,
+          type: typeMap[data.type] || data.type,
+          transactionType: transactionMap[data.transaction_type] || data.transaction_type,
+          price: data.price,
+          address: data.street,
+          neighborhood: data.neighborhood,
+          city: data.city,
+          state: data.state,
+          bedrooms: data.bedrooms,
+          bathrooms: data.bathrooms,
+          area: data.area,
+          description: data.description,
+          features: data.features || [],
+          images: data.images && data.images.length > 0 
+            ? data.images.map((img: any) => `http://localhost:8000${img.url}`) 
+            : ['/placeholder-property.jpg'],
+          acceptsMCMV: data.accepts_financing,
+          advertiserId: String(data.user_id),
+          user: data.user,
+        });
+      } catch (error) {
+        console.error('Erro ao carregar imóvel:', error);
+        setNotFound(true);
       }
 
       setIsLoading(false);
@@ -100,7 +96,6 @@ export default function PropertyDetails() {
   }
 
   // Para imóveis da API, usa os dados do user retornado
-  // Para mockados, busca no mockAdvertisers
   const advertiser = property.user 
     ? {
         id: property.user.id,
@@ -108,7 +103,7 @@ export default function PropertyDetails() {
         phone: property.user.phone || '88992146929',
         type: 'corretor',
       }
-    : mockAdvertisers.find(a => a.id === property.advertiserId);
+    : null;
 
   const whatsappMessage = `Olá! Tenho interesse no imóvel: ${property.title} - ${formatCurrency(property.price)}`;
 

@@ -1,9 +1,49 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { PropertyCard } from '../components/cards/PropertyCard';
-import { mockProperties } from '../data/mock';
+import { propertyApi, Property } from '../services/api';
+
+// Função para converter imóvel da API para o formato esperado pelo PropertyCard
+function apiPropertyToDisplay(property: Property) {
+  const typeMap: Record<string, string> = {
+    'house': 'casa',
+    'apartment': 'apartamento',
+    'land': 'terreno',
+    'commercial': 'comercial',
+    'farm': 'fazenda',
+  };
+
+  const transactionMap: Record<string, string> = {
+    'sale': 'venda',
+    'rent': 'aluguel',
+    'both': 'venda',
+  };
+
+  return {
+    id: `api-${property.id}`,
+    title: property.title,
+    type: typeMap[property.type] || property.type,
+    transactionType: transactionMap[property.transaction_type] || property.transaction_type,
+    price: property.price,
+    address: property.street,
+    neighborhood: property.neighborhood,
+    city: property.city,
+    state: property.state,
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
+    area: property.area,
+    description: property.description,
+    features: property.features || [],
+    images: property.images && property.images.length > 0 
+      ? property.images.map(img => `http://localhost:8000${img.url}`) 
+      : ['/placeholder-property.jpg'],
+    acceptsMCMV: property.accepts_financing,
+    advertiserId: String(property.user_id),
+    createdAt: property.created_at,
+  };
+}
 
 export default function Properties() {
   const [searchParams] = useSearchParams();
@@ -11,23 +51,42 @@ export default function Properties() {
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('all');
   const [selectedTransaction, setSelectedTransaction] = useState('all');
   const [onlyMCMV, setOnlyMCMV] = useState(searchParams.get('mcmv') === 'true');
+  const [properties, setProperties] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Buscar imóveis da API
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const response = await propertyApi.list();
+        const converted = response.data.map(apiPropertyToDisplay);
+        setProperties(converted);
+      } catch (error) {
+        console.error('Erro ao carregar imóveis:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
 
   // Extrair bairros únicos dinamicamente
   const neighborhoods = useMemo(() => {
-    const unique = [...new Set(mockProperties.map(p => p.neighborhood))];
+    const unique = [...new Set(properties.map(p => p.neighborhood))];
     return unique.sort();
-  }, []);
+  }, [properties]);
 
   // Filtrar imóveis
   const filteredProperties = useMemo(() => {
-    return mockProperties.filter(property => {
+    return properties.filter(property => {
       if (selectedType !== 'all' && property.type !== selectedType) return false;
       if (selectedNeighborhood !== 'all' && property.neighborhood !== selectedNeighborhood) return false;
       if (selectedTransaction !== 'all' && property.transactionType !== selectedTransaction) return false;
       if (onlyMCMV && !property.acceptsMCMV) return false;
       return true;
     });
-  }, [selectedType, selectedNeighborhood, selectedTransaction, onlyMCMV]);
+  }, [properties, selectedType, selectedNeighborhood, selectedTransaction, onlyMCMV]);
 
   return (
     <Layout>
@@ -134,7 +193,11 @@ export default function Properties() {
 
             {/* Grid de Imóveis */}
             <div className="flex-1">
-              {filteredProperties.length > 0 ? (
+              {isLoading ? (
+                <div className="bg-white rounded-card shadow-card p-12 text-center">
+                  <p className="text-neutral-600 text-lg">Carregando imóveis...</p>
+                </div>
+              ) : filteredProperties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredProperties.map((property) => (
                     <PropertyCard key={property.id} property={property} />
